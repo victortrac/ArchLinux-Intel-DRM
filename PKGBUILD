@@ -5,7 +5,7 @@
 
 pkgbase=linux-drm-intel-nightly
 _srcname=drm-intel
-pkgver=20160912
+pkgver=20160915
 pkgdesc="The \"stable\" testing branch for the Intel graphics driver (i915)"
 
 pkgrel=1
@@ -25,13 +25,14 @@ source=('drm-intel::git://anongit.freedesktop.org/drm-intel#branch=drm-intel-nig
         "003-nvme-3.diff"
         )
 sha256sums=('SKIP'
-            '7e7a4ddc6dc1b0901624975b39cc05f4b0bf366b53cc8f24733c5c87f9a371e1'
-            'd0041aceeefab52dff42911e097b6b5746cb0ff16c770e3f2286c50dc65c781b'
+            '5694aa2f735060988aadc1555d7243a5cab94526b76e4caae5860691bfd2dd6f'
+            '12a793c3d4609f971c8db35ecf0fe1cc7df24017e97245dea909331e704af2aa'
             'd590e751ab4cf424b78fd0d57e53d187f07401a68c8b468d17a5f39a337dacf0'
             '6ff6459f3703ed9ab7a90be96b17ddcc30fc4eb9d4b36c9cfed9b5f67e66fd4e'
             '9762c163430aabca94efbab29ef702b483f1d9a97a912f84ad0239467cba16bc'
             'ee13c83bf95f8880a4c1346ccf7b2e36772bc06174d3b812c91d7109aca5b600'
-            '52a44ac52356816e5b5f39a19c7de2eb08ce634a861821abe060debca479f7e2')
+            '52a44ac52356816e5b5f39a19c7de2eb08ce634a861821abe060debca479f7e2'
+            )
 
 _kernelname=${pkgbase#linux}
 
@@ -50,7 +51,6 @@ prepare() {
   patch -p1 -i "${srcdir}/001-nvme-1.diff"
   patch -p1 -i "${srcdir}/002-nvme-2.diff"
   patch -p1 -i "${srcdir}/003-nvme-3.diff"
-
 
   if [ "${CARCH}" = "x86_64" ]; then
     cat "${srcdir}/config.x86_64" > ./.config
