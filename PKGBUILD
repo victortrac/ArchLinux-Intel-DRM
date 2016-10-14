@@ -3,10 +3,10 @@
 # Contributor: Tobias Powalowski <tpowa@archlinux.org>
 # Contributor: Thomas Baechler <thomas@archlinux.org>
 
-pkgbase=linux-drm-intel-nightly
+pkgbase=linux-drm-intel-testing
 _srcname=drm-intel
 pkgver=20161012
-pkgdesc="The \"stable\" testing branch for the Intel graphics driver (i915)"
+pkgdesc="The \"testing\" testing branch for the Intel graphics driver (i915)"
 
 pkgrel=1
 arch=('i686' 'x86_64')
@@ -14,7 +14,7 @@ url="http://www.freedesktop.org/"
 license=('GPL2')
 makedepends=('xmlto' 'docbook-xsl' 'kmod' 'inetutils' 'bc' 'git')
 options=('!strip')
-source=('drm-intel::git://anongit.freedesktop.org/drm-intel#branch=drm-intel-nightly'
+source=('drm-intel::git://anongit.freedesktop.org/drm-intel#branch=drm-intel-testing'
         # the main kernel config files
         'config' 'config.x86_64'
         # standard config files for mkinitcpio ramdisk
@@ -22,16 +22,16 @@ source=('drm-intel::git://anongit.freedesktop.org/drm-intel#branch=drm-intel-nig
         "${pkgbase}.preset"
         )
 sha256sums=('SKIP'
-            '5694aa2f735060988aadc1555d7243a5cab94526b76e4caae5860691bfd2dd6f'
+            '2044d17a5347496b24cf1f77cadf0e6577d51e98f37e5220a745e972a0b0302f'
             '12a793c3d4609f971c8db35ecf0fe1cc7df24017e97245dea909331e704af2aa'
             'd590e751ab4cf424b78fd0d57e53d187f07401a68c8b468d17a5f39a337dacf0'
-            '6ff6459f3703ed9ab7a90be96b17ddcc30fc4eb9d4b36c9cfed9b5f67e66fd4e'
+            'e42e901c269fc25f4104ba44c97861dafa07f97a42c9d943d77efa0f3ddaa259'
             )
 
 _kernelname=${pkgbase#linux}
 
 pkgver() {
-  # drm-intel-nightly doesn't use tags, and it doesn't make sense to try to find
+  # drm-intel-testing doesn't use tags, and it doesn't make sense to try to find
   # an upstream tag either. Having a compacted form of the integration manifest
   # would be ideal, but date is probably sufficient for most cases (at most it's
   # off by 1 day based on timezone etc.).
@@ -79,7 +79,7 @@ _package() {
   conflicts=("kernel26${_kernelname}")
   replaces=()
   backup=("etc/mkinitcpio.d/${pkgbase}.preset")
-  install=linux-drm-intel-nightly.install
+  install=linux-drm-intel-testing.install
 
   cd "${srcdir}/${_srcname}"
 

@@ -1,8 +1,8 @@
 # arg 1:  the new package version
 # arg 2:  the old package version
 
-KERNEL_NAME=-drm-intel-nightly
-KERNEL_VERSION=4.8.0-1-drm-intel-nightly
+KERNEL_NAME=-drm-intel-testing
+KERNEL_VERSION=4.8.0-1-drm-intel-testing
 
 post_install () {
   # updating module dependencies
