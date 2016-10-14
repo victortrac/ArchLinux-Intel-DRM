@@ -1,17 +1,17 @@
-### Linux Intel DRM Nightly Branch
+### Archlinux Linux Intel DRM Kernels
+These are Archlinux custom kernels built from upstream DRM Intel kernel patches.
 
-For my Dell XPS 13 9350, I feel as though Intel is bringing quite a few patches for stability/performance/powersaving.  
-Instead of waiting for them to be merged to Mainline, why not just use the Intel DRM branch?
+I use these to make my Dell XPS 13 9350 run a little better, specifically with getting USB-C to handle 4k @ 60Hz external displays.
 
-I've added the NVME power saving patches to this.
+### Branches
 
-This branch is highly recommended for those using docks and other peripherals that aren't working too well on mainline.
+* drm-intel-nightly
+* drm-intel-testing 
+* nvme - NVME power saving patches
 
 ### Recommended Install
-git clone https://github.com/frank604/Intel-DRM-Nightly
 
-makepkg -s
-
-sudo pacman -U linux...pkg.tar.xz linux...-headers...pkg.tar.xz
-
-Note: Please use proper package names for above.
+    git clone https://github.com/victortrac/ArchLinux-Intel-DRM
+    git checkout <BRANCH>
+    makepkg -s
+    sudo pacman -U linux-*-`date +%Y%m%d`-1-x86_64.pkg.tar.xz 
