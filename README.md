@@ -6,6 +6,7 @@ I use these to make my Dell XPS 13 9350 run a little better, specifically with g
 ### Branches
 
 * drm-intel-nightly
+* drm-intel-nightly-9350 - This is a stripped down kernel customized for the XPS 9350. May not support all your peripherials!
 * drm-intel-testing 
 * nvme - NVME power saving patches
 
