@@ -2,7 +2,7 @@
 # arg 2:  the old package version
 
 KERNEL_NAME=-drm-intel-nightly
-KERNEL_VERSION=4.9.0-1-drm-intel-nightly
+KERNEL_VERSION=4.9.0-rc2-20161028
 
 post_install () {
   # updating module dependencies
