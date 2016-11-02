@@ -7,7 +7,7 @@
 
 pkgbase=linux-drm-intel-nightly
 _srcname=drm-intel
-pkgver=20161030
+pkgver=20161101
 pkgrel=1
 pkgdesc="The \"nightly\" branch for the Intel graphics driver (i915)"
 
