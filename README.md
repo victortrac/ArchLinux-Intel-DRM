@@ -5,8 +5,10 @@ I use these to make my Dell XPS 13 9350 run a little better, specifically with g
 
 ### Branches
 
-* drm-intel-nightly
-* drm-intel-nightly-9350 - This is a stripped down kernel customized for the XPS 9350. May not support all your peripherials!
+* arch-upstream - arch upstream of DRM-Intel nightly build configuration
+* arch-upstream-9350 - arch-upstream + patches for my Dell XPS 13 (9350)
+** Patches: 
+*** restore_tstate_across_s3.patch - fixes a bug in Speedstep that drops CPU down to below hardware boundaries (mine was down to 90mhz-200mhz, which was not ususable)
 * drm-intel-testing 
 * nvme - NVME power saving patches
 

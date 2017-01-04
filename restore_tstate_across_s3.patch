@@ -1,0 +1,242 @@
+From a2be60992cd22435a401a1c0c289f295d2b39b69 Mon Sep 17 00:00:00 2001
+From: Chen Yu <yu.c.chen@intel.com>
+Date: Wed, 30 Nov 2016 14:35:04 +0800
+Subject: [PATCH][RFC v2] ACPI throttling: Save/restore tstate for each CPUs across
+ suspend/resume
+
+Previously a bug was reported that on certain Broadwell
+platforms, after resuming from S3, the CPU is running at
+an anomalously low speed, due to BIOS has enabled the
+throttling across S3. The solution to this is to introduce
+a quirk framework to save/restore tstate MSR register
+around suspend/resume, in Commit 7a9c2dd08ead ("x86/pm:
+Introduce quirk framework to save/restore extra MSR
+registers around suspend/resume").
+
+However more and more reports show that other platforms also
+experienced the same issue, because some BIOSes would like to
+adjust the tstate with some unknown reasons, maybe the BIOS thinks
+the temperature is too high, or the battery is too low, as mentioned
+by Doug Smythies.
+
+To deal with this situation, the Linux uses a compensation strategy
+that, the thermal management leverages thermal_pm_notify() upon resume
+to check if the Processors inside the thermal zone should be throttled
+or not, thus tstate would be re-evaluated. Unfortunately on these bogus
+platforms, none of the Processors are inside any thermal zones due
+to BIOS's implementation. Thus tstate for Processors never has a
+chance to be brought back to normal.
+
+This patch tries to save/restore tstate on receiving the
+PM_SUSPEND_PREPARE and PM_POST_SUSPEND, to be more specific,
+the tstate is restored before thermal_zone_device_update()
+is called in thermal_pm_notify(), in this way the thermal zone can
+adjust the tstate eventually and most importantly helps adjust the tstate
+for Processors which do not have any thermal zones bound. It does not
+impact the old semantics.
+
+Another concern is that, as suggested by Rui Wang, each CPU should
+take care of the save/restore operation, thus this patch uses percpu
+workqueue to achieve this.
+
+Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=90041
+Reported-by: Matthew Garrett <mjg59@srcf.ucam.org>
+Reported-by: Kadir <kadir@colakoglu.nl>
+Cc: Len Brown <lenb@kernel.org>
+Cc: "Rafael J. Wysocki" <rafael@kernel.org>
+Cc: Pavel Machek <pavel@ucw.cz>
+Cc: Matthew Garrett <mjg59@srcf.ucam.org>
+Cc: Rui Zhang <rui.zhang@intel.com>
+Cc: linux-pm@vger.kernel.org
+Signed-off-by: Chen Yu <yu.c.chen@intel.com>
+---
+ drivers/acpi/processor_throttling.c | 72 +++++++++++++++++++++++++++++++++++++
+ drivers/thermal/thermal_core.c      | 24 +++++++++++++
+ include/linux/thermal.h             |  6 ++++
+ 3 files changed, 102 insertions(+)
+
+diff --git a/drivers/acpi/processor_throttling.c b/drivers/acpi/processor_throttling.c
+index d51ca1c..d31ff5e 100644
+--- a/drivers/acpi/processor_throttling.c
++++ b/drivers/acpi/processor_throttling.c
+@@ -29,6 +29,7 @@
+ #include <linux/sched.h>
+ #include <linux/cpufreq.h>
+ #include <linux/acpi.h>
++#include <linux/suspend.h>
+ #include <acpi/processor.h>
+ #include <asm/io.h>
+ #include <asm/uaccess.h>
+@@ -208,6 +209,8 @@ static int acpi_processor_update_tsd_coord(void)
+  * Update the T-state coordination after the _TSD
+  * data for all cpus is obtained.
+  */
++static int acpi_processor_throttling_pm_compensate(void);
++
+ void acpi_processor_throttling_init(void)
+ {
+ 	if (acpi_processor_update_tsd_coord()) {
+@@ -215,6 +218,10 @@ void acpi_processor_throttling_init(void)
+ 			"Assume no T-state coordination\n"));
+ 	}
+ 
++	/* In case the ACPI processors are not controlled by any thermal zones,
++	 * save/restore tstate explicitly.
++	 */
++	acpi_processor_throttling_pm_compensate();
+ 	return;
+ }
+ 
+@@ -758,6 +765,66 @@ static int acpi_throttling_wrmsr(u64 value)
+ 	}
+ 	return ret;
+ }
++
++static DEFINE_PER_CPU(u64, saved_tstate_msr);
++
++static long tstate_save(void *data)
++{
++	u64 value;
++
++	acpi_throttling_rdmsr(&value);
++	this_cpu_write(saved_tstate_msr, value);
++	return 0;
++}
++
++static long tstate_restore(void *data)
++{
++	u64 value;
++
++	value = this_cpu_read(saved_tstate_msr);
++	acpi_throttling_wrmsr(value);
++	return 0;
++}
++
++static int tstate_notifier(struct notifier_block *nb,
++				unsigned long mode, void *_unused)
++{
++	int cpu;
++	long (*callback)(void *data);
++
++	switch (mode) {
++	case PM_SUSPEND_PREPARE:
++		callback = &tstate_save;
++		break;
++	case PM_POST_SUSPEND:
++		callback = &tstate_restore;
++		break;
++	default:
++		return 0;
++	}
++
++	get_online_cpus();
++	for_each_online_cpu(cpu)
++		/*
++		 * Wait for each work to be finished,
++		 * so that tstate is restored before
++		 * the thermal zone's update.
++		 */
++		work_on_cpu(cpu, callback, NULL);
++	put_online_cpus();
++	return 0;
++}
++
++static struct notifier_block tstate_notifier_block = {
++	.notifier_call = tstate_notifier,
++};
++
++static int acpi_processor_throttling_pm_compensate(void)
++{
++	thermal_pm_notifier_register(&tstate_notifier_block);
++	return 0;
++}
++
+ #else
+ static int acpi_throttling_rdmsr(u64 *value)
+ {
+@@ -772,6 +839,11 @@ static int acpi_throttling_wrmsr(u64 value)
+ 		"HARDWARE addr space,NOT supported yet\n");
+ 	return -1;
+ }
++
++static int acpi_processor_throttling_pm_compensate(void)
++{
++	return -1;
++}
+ #endif
+ 
+ static int acpi_read_throttling_status(struct acpi_processor *pr,
+diff --git a/drivers/thermal/thermal_core.c b/drivers/thermal/thermal_core.c
+index 226b0b4ac..31f3785 100644
+--- a/drivers/thermal/thermal_core.c
++++ b/drivers/thermal/thermal_core.c
+@@ -2281,6 +2281,20 @@ static void thermal_unregister_governors(void)
+ 	thermal_gov_power_allocator_unregister();
+ }
+ 
++static BLOCKING_NOTIFIER_HEAD(thermal_pm_notifier);
++
++int thermal_pm_notifier_register(struct notifier_block *nb)
++{
++	return blocking_notifier_chain_register(&thermal_pm_notifier, nb);
++}
++EXPORT_SYMBOL_GPL(thermal_pm_notifier_register);
++
++int thermal_pm_notifier_unregister(struct notifier_block *nb)
++{
++	return blocking_notifier_chain_unregister(&thermal_pm_notifier, nb);
++}
++EXPORT_SYMBOL_GPL(thermal_pm_notifier_unregister);
++
+ static int thermal_pm_notify(struct notifier_block *nb,
+ 				unsigned long mode, void *_unused)
+ {
+@@ -2291,11 +2305,21 @@ static int thermal_pm_notify(struct notifier_block *nb,
+ 	case PM_RESTORE_PREPARE:
+ 	case PM_SUSPEND_PREPARE:
+ 		atomic_set(&in_suspend, 1);
++		/*
++		 * For suspend case, just in case thermal_zone_device_update()
++		 * is invoked in the future, tstate should be saved after that.
++		 */
++		blocking_notifier_call_chain(&thermal_pm_notifier, mode, NULL);
+ 		break;
+ 	case PM_POST_HIBERNATION:
+ 	case PM_POST_RESTORE:
+ 	case PM_POST_SUSPEND:
+ 		atomic_set(&in_suspend, 0);
++		/*
++		 * Restore tstate in case the Processors are not in any thermal
++		 * zones, and the tstate has been modified by BIOSes.
++		 */
++		blocking_notifier_call_chain(&thermal_pm_notifier, mode, NULL);
+ 		list_for_each_entry(tz, &thermal_tz_list, node) {
+ 			thermal_zone_device_reset(tz);
+ 			thermal_zone_device_update(tz,
+diff --git a/include/linux/thermal.h b/include/linux/thermal.h
+index 511182a..69c385b 100644
+--- a/include/linux/thermal.h
++++ b/include/linux/thermal.h
+@@ -469,6 +469,8 @@ struct thermal_instance *get_thermal_instance(struct thermal_zone_device *,
+ 		struct thermal_cooling_device *, int);
+ void thermal_cdev_update(struct thermal_cooling_device *);
+ void thermal_notify_framework(struct thermal_zone_device *, int);
++int thermal_pm_notifier_register(struct notifier_block *nb);
++int thermal_pm_notifier_unregister(struct notifier_block *nb);
+ #else
+ static inline bool cdev_is_power_actor(struct thermal_cooling_device *cdev)
+ { return false; }
+@@ -540,6 +542,10 @@ static inline void thermal_cdev_update(struct thermal_cooling_device *cdev)
+ static inline void thermal_notify_framework(struct thermal_zone_device *tz,
+ 	int trip)
+ { }
++static inline int thermal_pm_notifier_register(struct notifier_block *nb)
++{ return -ENODEV; }
++static inline int thermal_pm_notifier_unregister(struct notifier_block *nb)
++{ return -ENODEV; }
+ #endif /* CONFIG_THERMAL */
+ 
+ #if defined(CONFIG_NET) && IS_ENABLED(CONFIG_THERMAL)
+-- 
+2.7.4
+

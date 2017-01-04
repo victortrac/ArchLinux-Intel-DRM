@@ -5,7 +5,7 @@
 
 pkgbase=linux-drm-intel-nightly
 _srcname=drm-intel
-pkgver=20161219
+pkgver=20170103
 pkgdesc="The \"stable\" testing branch for the Intel graphics driver (i915)"
 
 pkgrel=1
@@ -20,12 +20,14 @@ source=('drm-intel::git://anongit.freedesktop.org/drm-intel#branch=drm-intel-nig
         # standard config files for mkinitcpio ramdisk
         "${pkgbase}.install"
         "${pkgbase}.preset"
+        "restore_tstate_across_s3.patch"
         )
 sha256sums=('SKIP'
             'a68212b4c9f58ffd4367972fd5b7a12c0120eccdfe3f90018e8883b2caa09b1f'
             '9f33b66f51d93014445d330d8beaf35d16549364a9453a436b2ba1fe11a9911d'
             'd590e751ab4cf424b78fd0d57e53d187f07401a68c8b468d17a5f39a337dacf0'
-            '6ff6459f3703ed9ab7a90be96b17ddcc30fc4eb9d4b36c9cfed9b5f67e66fd4e')
+            '6ff6459f3703ed9ab7a90be96b17ddcc30fc4eb9d4b36c9cfed9b5f67e66fd4e'
+            '1ed9cb57a74c10234680c7c74dc00cc547d661e018265070291a968447d6414e')
 
 _kernelname=${pkgbase#linux}
 
@@ -39,6 +41,10 @@ pkgver() {
 
 prepare() {
   cd "${srcdir}/${_srcname}"
+
+  # CPU Throttling bug patch. 
+  # See https://bugzilla.kernel.org/show_bug.cgi?id=90041
+  patch -p1 -i "${srcdir}/restore_tstate_across_s3.patch"
 
   if [ "${CARCH}" = "x86_64" ]; then
     cat "${srcdir}/config.x86_64" > ./.config
