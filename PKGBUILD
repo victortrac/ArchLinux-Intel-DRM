@@ -3,9 +3,9 @@
 # Contributor: Tobias Powalowski <tpowa@archlinux.org>
 # Contributor: Thomas Baechler <thomas@archlinux.org>
 
-pkgbase=linux-drm-intel-nightly
+pkgbase=linux-drm-intel-testing
 _srcname=drm-intel
-pkgver=20170103
+pkgver=20170104
 pkgdesc="The \"stable\" testing branch for the Intel graphics driver (i915)"
 
 pkgrel=1
@@ -14,7 +14,7 @@ url="http://www.freedesktop.org/"
 license=('GPL2')
 makedepends=('xmlto' 'docbook-xsl' 'kmod' 'inetutils' 'bc' 'git')
 options=('!strip')
-source=('drm-intel::git://anongit.freedesktop.org/drm-intel#branch=drm-intel-nightly'
+source=('drm-intel::git://anongit.freedesktop.org/drm-intel#branch=drm-intel-testing'
         # the main kernel config files
         'config' 'config.x86_64'
         # standard config files for mkinitcpio ramdisk
@@ -26,13 +26,13 @@ sha256sums=('SKIP'
             'a68212b4c9f58ffd4367972fd5b7a12c0120eccdfe3f90018e8883b2caa09b1f'
             '9f33b66f51d93014445d330d8beaf35d16549364a9453a436b2ba1fe11a9911d'
             'd590e751ab4cf424b78fd0d57e53d187f07401a68c8b468d17a5f39a337dacf0'
-            '6ff6459f3703ed9ab7a90be96b17ddcc30fc4eb9d4b36c9cfed9b5f67e66fd4e'
+            'e42e901c269fc25f4104ba44c97861dafa07f97a42c9d943d77efa0f3ddaa259'
             '1ed9cb57a74c10234680c7c74dc00cc547d661e018265070291a968447d6414e')
 
 _kernelname=${pkgbase#linux}
 
 pkgver() {
-  # drm-intel-nightly doesn't use tags, and it doesn't make sense to try to find
+  # drm-intel-testing doesn't use tags, and it doesn't make sense to try to find
   # an upstream tag either. Having a compacted form of the integration manifest
   # would be ideal, but date is probably sufficient for most cases (at most it's
   # off by 1 day based on timezone etc.).
@@ -84,7 +84,7 @@ _package() {
   conflicts=("kernel26${_kernelname}")
   replaces=()
   backup=("etc/mkinitcpio.d/${pkgbase}.preset")
-  install=linux-drm-intel-nightly.install
+  install=linux-drm-intel-testing.install
 
   cd "${srcdir}/${_srcname}"
 
